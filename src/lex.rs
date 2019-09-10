@@ -6,7 +6,7 @@ use std::str::CharIndices;
 pub enum Token<'a> {
     Paren(char),
     Operator(char),
-    Number(&'a str),
+    Number(i64),
     Symbol(&'a str),
 }
 
@@ -70,10 +70,13 @@ impl<'a> Lexer<'a> {
                 self.input_iter.next();
                 continue;
             } else {
-                return Token::Number(&self.input[start..i]);
+                let val: i64 = self.input[start..i].parse().unwrap();
+                return Token::Number(val);
             }
         }
-        Token::Number(&self.input[start..])
+
+        let val: i64 = self.input[start..].parse().unwrap();
+        Token::Number(val)
     }
 
     fn skip_whitespace(&mut self) {
