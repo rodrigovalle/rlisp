@@ -16,14 +16,14 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(input: &'a str) -> Lexer {
+    pub fn new(input: &str) -> Lexer {
         Lexer {
             input,
             input_iter: input.char_indices().peekable(),
         }
     }
 
-    pub fn next_token(&mut self) -> Option<Token> {
+    pub fn next_token(&mut self) -> Option<Token<'a>> {
         self.skip_whitespace();
         if let Some((i, c)) = self.input_iter.next() {
             match c {
@@ -52,7 +52,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn tokenize_symbol(&mut self, start: usize) -> Token {
+    fn tokenize_symbol(&mut self, start: usize) -> Token<'a> {
         while let Some(&(i, c)) = self.input_iter.peek() {
             if c.is_ascii_alphanumeric() {
                 self.input_iter.next();
@@ -64,7 +64,7 @@ impl<'a> Lexer<'a> {
         Token::Symbol(&self.input[start..])
     }
 
-    fn tokenize_number(&mut self, start: usize) -> Token {
+    fn tokenize_number(&mut self, start: usize) -> Token<'a> {
         while let Some(&(i, c)) = self.input_iter.peek() {
             if c.is_ascii_digit() {
                 self.input_iter.next();
@@ -87,6 +87,13 @@ impl<'a> Lexer<'a> {
                 return;
             }
         }
+    }
+}
+
+impl<'a> Iterator for Lexer<'a> {
+    type Item = Token<'a>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_token()
     }
 }
 
