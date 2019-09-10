@@ -2,7 +2,7 @@ use std::iter::Iterator;
 use std::iter::Peekable;
 use std::str::CharIndices;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Token<'a> {
     Paren(char),
     Operator(char),
@@ -54,7 +54,9 @@ impl<'a> Lexer<'a> {
 
     fn tokenize_symbol(&mut self, start: usize) -> Token<'a> {
         while let Some(&(i, c)) = self.input_iter.peek() {
-            if c.is_ascii_alphanumeric() {
+            if (c.is_ascii_alphanumeric() || c.is_ascii_punctuation())
+                && !(c == '(' || c == ')')
+            {
                 self.input_iter.next();
                 continue;
             } else {
@@ -97,42 +99,35 @@ impl<'a> Iterator for Lexer<'a> {
     }
 }
 
-/*
-pub fn tokenize<'a>(input: &'a str) -> Vec<Token<'a>> {
-    let mut tokens = Vec::new();
-    for (i, c) in input.chars().enumerate() {
-        match c {
-            '(' => tokens.push(Token::Par),
-            ')' => tokens.push(Token::RParen),
-            '0'...'9' => tokens.push(tokenize_number(&input[i..])),
-            'a'...'z' | 'A'...'Z' | '_' => tokens.push(tokenize_symbol(&input[i..])),
-            _ => {
-            }
+#[cfg(test)]
+mod lexer_test {
+    use crate::lex::{Lexer, Token};
+
+    #[test]
+    fn test_e2e() {
+        let input = "(some-function? (list a b c d) 1 (+ 2 3))";
+        let tokenizer = Lexer::new(input);
+        let expected = vec![
+            Token::Paren('('),
+            Token::Symbol("some-function?"),
+            Token::Paren('('),
+            Token::Symbol("list"),
+            Token::Symbol("a"),
+            Token::Symbol("b"),
+            Token::Symbol("c"),
+            Token::Symbol("d"),
+            Token::Paren(')'),
+            Token::Number(1),
+            Token::Paren('('),
+            Token::Operator('+'),
+            Token::Number(2),
+            Token::Number(3),
+            Token::Paren(')'),
+            Token::Paren(')'),
+        ];
+
+        for (actual, expected) in Iterator::zip(tokenizer, expected) {
+            assert_eq!(actual, expected);
         }
     }
-
-    tokens
 }
-
-fn tokenize_symbol(input: &str) -> Token {
-    let mut len: usize = 0;
-    for c in input.chars() {
-        if c.is_ascii_alphanumeric() || c.is_ascii_punctuation() {
-            len += 1;
-        }
-    }
-
-    Token::Symbol(&input[..len])
-}
-
-fn tokenize_number(input: &str) -> Token {
-    let mut collector = String::new();
-    for c in input.chars() {
-        if c.is_ascii_digit() {
-            collector.push(c);
-        }
-    }
-
-    Token::Number(collector.parse().unwrap())
-}
-*/
