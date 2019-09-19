@@ -1,7 +1,7 @@
-mod grammar;
 mod lex;
-use grammar::SExpr;
+mod sexpr;
 use lex::Parse;
+use sexpr::SExpr;
 
 fn main() {
     match SExpr::parse("(+ (- 1 2) () 3 4)") {
