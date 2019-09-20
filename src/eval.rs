@@ -1,4 +1,5 @@
-use crate::sexpr::SExpr;
+#![feature(advanced_slice_patterns)]
+use crate::sexpr::SExprType;
 
 enum EvalErrorKind {
     ExpectedSExpr,
@@ -17,6 +18,9 @@ enum ExprType {
 
 type EvalResult<T> = Result<T, EvalErrorKind>;
 
+// -- GADTs with explicit type constructor kinds could make this kind (haha) of
+// -- thing much easier!
+//
 // type _ value =
 //   | Number: int -> int value
 //   | Symbol: str -> str value
@@ -48,11 +52,28 @@ type EvalResult<T> = Result<T, EvalErrorKind>;
 //   | Number of int
 //   | Symbol of string
 
-
-trait Eval {
-    fn eval(&self) -> EvalResult<>;
+pub fn eval<'a>(ast: &'a SExprType) -> SExprType<'a> {
+    match ast {
+        SExprType::SExpr(l) => eval_function(l),
+        SExprType::Number(i) => SExprType::Number(*i),
+        SExprType::Symbol(s) => SExprType::Symbol(s),
+    }
 }
 
-impl<'a> Eval for SExpr<'a> {
-    fn eval(expr: SExpr) -> EvalResult<>;
+
+fn eval_function<'a>(vec: &Vec<SExprType<'a>>) -> SExprType<'a> {
+    let maybe_op = vec.get(0);
+    match maybe_op {
+        Some(SExprType::Symbol("+")) => {
+            let sum = &vec[1..].iter().fold(0, |acc, item| {
+                if let SExprType::Number(i) = eval(item) {
+                    acc + i
+                } else {
+                    panic!("oops");
+                }
+            });
+            SExprType::Number(*sum)
+        },
+        _ => panic!("uhh")
+    }
 }

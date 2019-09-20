@@ -3,26 +3,26 @@ use crate::lex::{
 };
 
 #[derive(Debug, PartialEq)]
-pub enum SExpr<'a> {
-    SExpr(Vec<SExpr<'a>>),
+pub enum SExprType<'a> {
+    SExpr(Vec<SExprType<'a>>),
     Symbol(&'a str),
     Number(i64),
 }
 
-impl<'a> SExpr<'a> {
-    fn match_number(input: &str) -> ParseResult<SExpr> {
+impl<'a> SExprType<'a> {
+    fn match_number(input: &str) -> ParseResult<SExprType> {
         let input = skip_space(input);
         let (digits, input) =
             take_while(input, "number", |c| c.is_ascii_digit())?;
 
         if let Ok(int) = digits.parse() {
-            Ok((SExpr::Number(int), input))
+            Ok((SExprType::Number(int), input))
         } else {
             Err(ParseErrorKind::Integer)
         }
     }
 
-    fn match_symbol(input: &str) -> ParseResult<SExpr> {
+    fn match_symbol(input: &str) -> ParseResult<SExprType> {
         let input = skip_space(input);
         let (symbol, input) = take_while(input, "symbol", |c| {
             c.is_ascii_alphanumeric()
@@ -33,12 +33,12 @@ impl<'a> SExpr<'a> {
                     })
         })?;
 
-        Ok((SExpr::Symbol(symbol), input))
+        Ok((SExprType::Symbol(symbol), input))
     }
 }
 
-impl<'a> Parse<'a> for SExpr<'a> {
-    fn parse(input: &'a str) -> ParseResult<SExpr<'a>> {
+impl<'a> Parse<'a> for SExprType<'a> {
+    fn parse(input: &'a str) -> ParseResult<SExprType<'a>> {
         let input = skip_space(input);
         let mut input = expect("(", input)?;
         let mut children = Vec::new();
@@ -48,9 +48,9 @@ impl<'a> Parse<'a> for SExpr<'a> {
                 break;
             }
 
-            let result = SExpr::parse(input)
-                .or_else(|_| SExpr::match_number(input))
-                .or_else(|_| SExpr::match_symbol(input));
+            let result = SExprType::parse(input)
+                .or_else(|_| SExprType::match_number(input))
+                .or_else(|_| SExprType::match_symbol(input));
 
             if let Ok((sexpr, rest)) = result {
                 children.push(sexpr);
@@ -61,7 +61,7 @@ impl<'a> Parse<'a> for SExpr<'a> {
         }
         let input = expect(")", input)?;
 
-        Ok((SExpr::SExpr(children), input))
+        Ok((SExprType::SExpr(children), input))
     }
 }
 
@@ -69,31 +69,37 @@ impl<'a> Parse<'a> for SExpr<'a> {
 mod parser_test {
     use super::*;
 
-    fn parse_expect(input: &'static str, expect: SExpr) {
-        let (result, _) = SExpr::parse(input).expect("parse error");
+    fn parse_expect(input: &'static str, expect: SExprType) {
+        let (result, _) = SExprType::parse(input).expect("parse error");
         assert_eq!(result, expect);
     }
 
     #[test]
     fn test_empty() {
-        parse_expect("()", SExpr::SExpr(vec![]))
+        parse_expect("()", SExprType::SExpr(vec![]))
     }
 
     #[test]
     fn test_number() {
-        parse_expect("(1)", SExpr::SExpr(vec![SExpr::Number(1)]))
+        parse_expect("(1)", SExprType::SExpr(vec![SExprType::Number(1)]))
     }
 
     #[test]
     fn test_symbol() {
-        parse_expect("(test)", SExpr::SExpr(vec![SExpr::Symbol("test")]))
+        parse_expect(
+            "(test)",
+            SExprType::SExpr(vec![SExprType::Symbol("test")]),
+        )
     }
 
     #[test]
     fn test_number_symbol() {
         parse_expect(
             "(test 1)",
-            SExpr::SExpr(vec![SExpr::Symbol("test"), SExpr::Number(1)]),
+            SExprType::SExpr(vec![
+                SExprType::Symbol("test"),
+                SExprType::Number(1),
+            ]),
         )
     }
 
@@ -101,14 +107,14 @@ mod parser_test {
     fn test_nested() {
         parse_expect(
             "(test (test 1 2) 3)",
-            SExpr::SExpr(vec![
-                SExpr::Symbol("test"),
-                SExpr::SExpr(vec![
-                    SExpr::Symbol("test"),
-                    SExpr::Number(1),
-                    SExpr::Number(2),
+            SExprType::SExpr(vec![
+                SExprType::Symbol("test"),
+                SExprType::SExpr(vec![
+                    SExprType::Symbol("test"),
+                    SExprType::Number(1),
+                    SExprType::Number(2),
                 ]),
-                SExpr::Number(3),
+                SExprType::Number(3),
             ]),
         )
     }
