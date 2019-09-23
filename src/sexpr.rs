@@ -13,7 +13,7 @@ impl<'a> SExprType<'a> {
     fn match_number(input: &str) -> ParseResult<SExprType> {
         let input = skip_space(input);
         let (digits, input) =
-            take_while(input, "number", |c| c.is_ascii_digit())?;
+            take_while(input, "number", |c| c.is_ascii_digit() || *c == '-')?;
 
         if let Ok(int) = digits.parse() {
             Ok((SExprType::Number(int), input))

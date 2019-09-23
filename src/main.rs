@@ -6,7 +6,7 @@ use sexpr::SExprType;
 use eval::eval;
 
 fn main() {
-    match SExprType::parse("(+ (+ 1 2) 3 4)") {
+    match SExprType::parse("(+ (+ 1 2) 3 4 (- 2 1))") {
         Ok((sexpr, _)) => {
             println!("success");
             println!("{:?}", sexpr);
