@@ -6,11 +6,16 @@ use sexpr::SExprType;
 use eval::eval;
 
 fn main() {
-    match SExprType::parse("(+ (+ 1 2) 3 4 (- 2 1))") {
+    run("(+ 1 (+ 2 3))");
+    run("(+ (+ 1 2) 3 4 (- 2 1))");
+    //run("(+ (+ 1 2) ())");
+}
+
+fn run(program: &str) {
+    match SExprType::parse(program) {
         Ok((sexpr, _)) => {
-            println!("success");
-            println!("{:?}", sexpr);
-            println!("{:?}", eval(&sexpr));
+            println!("parsed: {:?}", sexpr);
+            println!("eval: {:?}", eval(&sexpr));
         }
         Err(err) => {
             println!("failure");

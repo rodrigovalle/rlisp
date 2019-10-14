@@ -38,59 +38,59 @@ type EvalResult<T> = Result<T, EvalErrorKind>;
 pub fn eval<'a>(ast: &'a SExprType) -> SExprType<'a> {
     match ast {
         SExprType::SExpr(l) => {
-            if let Some(SExprType::Symbol(fn_name)) = l.get(0) {
-                eval_function(fn_name, &l[1..])
+            if !l.is_empty() {
+                // functional application
+                if let SExprType::Symbol(fn_name) = l[0] {
+                    let args = evlis(&l[1..]);
+                    eval_builtin(fn_name, &args)
+                } else {
+                    panic!("no such function {:?}", l[0])
+                }
             } else {
-                panic!("implementation does not recognize nil yet")
+                // leave nil alone
+                SExprType::SExpr(vec![])
             }
-        }
+        },
         SExprType::Number(i) => SExprType::Number(*i),
         SExprType::Symbol(s) => SExprType::Symbol(s),
     }
 }
 
-fn eval_function<'a>(
-    fn_name: &'a str,
-    args: &[SExprType<'a>],
-) -> SExprType<'a> {
+fn evlis<'a>(list: &'a [SExprType]) -> Vec<SExprType<'a>> {
+    list.iter().map(eval).collect()
+}
+
+fn eval_builtin<'a>(fn_name: &'a str, args: &[SExprType<'a>]) -> SExprType<'a> {
     match (fn_name, args) {
-        ("+", args) => eval_addition(args),
-        ("-", args) => eval_subtraction(args),
+        ("+", args) => builtin_addition(args),
+        ("-", args) => builtin_subtraction(args),
         (op, args) => panic!("unrecognized operator {}", op),
     }
 }
 
-fn unwrap_number(op: &'static str) -> impl Fn(&SExprType) -> i64 {
-    move |item| {
-        match item {
-            SExprType::Number(i) => *i,
-            expr => {
-                if let SExprType::Number(i) = eval(expr) {
-                    i
-                } else {
-                    println!("{:?}", item);
-                    panic!("'{}' recieved unexpected arguments", op)
-                }
-            }
-        }
+fn unwrap_number(item: &SExprType) -> i64 {
+    if let SExprType::Number(i) = item {
+        *i
+    } else {
+        panic!("{:?} is not a number", item)
     }
 }
 
-fn eval_addition<'a>(args: &[SExprType<'a>]) -> SExprType<'a> {
+fn builtin_addition<'a>(args: &[SExprType<'a>]) -> SExprType<'a> {
     let sum = args
         .iter()
-        .map(unwrap_number("+"))
-        .fold(0, |acc, i| acc + i);
+        .map(unwrap_number)
+        .sum();
     SExprType::Number(sum)
 }
 
-fn eval_subtraction<'a>(args: &[SExprType<'a>]) -> SExprType<'a> {
+fn builtin_subtraction<'a>(args: &[SExprType<'a>]) -> SExprType<'a> {
     match args.split_at(1) {
         ([SExprType::Number(head)], []) => SExprType::Number(-head),
         ([SExprType::Number(head)], tail) => {
             let result = tail
                 .iter()
-                .map(unwrap_number("-"))
+                .map(unwrap_number)
                 .fold(*head, |acc, i| acc - i);
             SExprType::Number(result)
         },
