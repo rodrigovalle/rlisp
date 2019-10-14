@@ -13,28 +13,6 @@ enum FunctionType<'a> {
 
 type EvalResult<T> = Result<T, EvalErrorKind>;
 
-// -- GADTs with explicit type constructor kinds could make this kind (haha) of
-// -- thing much easier!
-//
-// type _ value =
-//   | Number: int -> int value
-//   | Symbol: str -> str value
-//
-// type _ expr =
-//   | Value: 'a value -> 'a expr
-//   | If: bool expr * 'a expr * 'a expr -> 'a expr
-//   | Eq: 'a expr * 'a expr -> bool expr
-//   | Lt: int expr * int expr -> bool expr
-//
-// let rec eval : type a. a expr -> a = function
-//   | Value (Bool b) -> b
-//   | Value (Int i) -> i
-//   | If (b, l, r) -> if eval b then eval l else eval r
-//   | Eq (a, b) -> (eval a) = (eval b)
-//   | Lt (a,b) -> (eval a) < (eval b)
-//
-// (if (n < 0) ((print "a")) ((print "b")))
-
 pub fn eval<'a>(ast: &'a SExprType) -> SExprType<'a> {
     match ast {
         SExprType::SExpr(l) => {
