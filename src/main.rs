@@ -1,10 +1,10 @@
+mod ast;
 mod env;
 mod eval;
 mod lex;
-mod sexpr;
+use ast::AstNode;
 use eval::Eval;
 use lex::Parse;
-use sexpr::SExprType;
 use std::collections::HashMap;
 
 fn main() {
@@ -15,7 +15,7 @@ fn main() {
 
 fn run(program: &str) {
     let evaluator = Eval::new(HashMap::new());
-    match SExprType::parse(program) {
+    match AstNode::parse(program) {
         Ok((sexpr, _)) => {
             println!("parsed: {:?}", sexpr);
             println!("eval: {:?}", evaluator.eval(&sexpr));

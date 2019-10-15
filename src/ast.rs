@@ -3,26 +3,26 @@ use crate::lex::{
 };
 
 #[derive(Debug, PartialEq)]
-pub enum SExprType<'a> {
-    SExpr(Vec<SExprType<'a>>),
+pub enum AstNode<'a> {
+    SExpr(Vec<AstNode<'a>>),
     Symbol(&'a str),
     Number(i64),
 }
 
-impl<'a> SExprType<'a> {
-    fn match_number(input: &str) -> ParseResult<SExprType> {
+impl<'a> AstNode<'a> {
+    fn match_number(input: &str) -> ParseResult<AstNode> {
         let input = skip_space(input);
         let (digits, input) =
             take_while(input, "number", |c| c.is_ascii_digit() || *c == '-')?;
 
         if let Ok(int) = digits.parse() {
-            Ok((SExprType::Number(int), input))
+            Ok((AstNode::Number(int), input))
         } else {
             Err(ParseErrorKind::Integer)
         }
     }
 
-    fn match_symbol(input: &str) -> ParseResult<SExprType> {
+    fn match_symbol(input: &str) -> ParseResult<AstNode> {
         let input = skip_space(input);
         let (symbol, input) = take_while(input, "symbol", |c| {
             c.is_ascii_alphanumeric()
@@ -33,12 +33,12 @@ impl<'a> SExprType<'a> {
                     })
         })?;
 
-        Ok((SExprType::Symbol(symbol), input))
+        Ok((AstNode::Symbol(symbol), input))
     }
 }
 
-impl<'a> Parse<'a> for SExprType<'a> {
-    fn parse(input: &'a str) -> ParseResult<SExprType<'a>> {
+impl<'a> Parse<'a> for AstNode<'a> {
+    fn parse(input: &'a str) -> ParseResult<AstNode<'a>> {
         let input = skip_space(input);
         let mut input = expect("(", input)?;
         let mut children = Vec::new();
@@ -48,9 +48,9 @@ impl<'a> Parse<'a> for SExprType<'a> {
                 break;
             }
 
-            let result = SExprType::parse(input)
-                .or_else(|_| SExprType::match_number(input))
-                .or_else(|_| SExprType::match_symbol(input));
+            let result = AstNode::parse(input)
+                .or_else(|_| AstNode::match_number(input))
+                .or_else(|_| AstNode::match_symbol(input));
 
             if let Ok((sexpr, rest)) = result {
                 children.push(sexpr);
@@ -61,7 +61,7 @@ impl<'a> Parse<'a> for SExprType<'a> {
         }
         let input = expect(")", input)?;
 
-        Ok((SExprType::SExpr(children), input))
+        Ok((AstNode::SExpr(children), input))
     }
 }
 
@@ -69,37 +69,31 @@ impl<'a> Parse<'a> for SExprType<'a> {
 mod parser_test {
     use super::*;
 
-    fn parse_expect(input: &'static str, expect: SExprType) {
-        let (result, _) = SExprType::parse(input).expect("parse error");
+    fn parse_expect(input: &'static str, expect: AstNode) {
+        let (result, _) = AstNode::parse(input).expect("parse error");
         assert_eq!(result, expect);
     }
 
     #[test]
     fn test_empty() {
-        parse_expect("()", SExprType::SExpr(vec![]))
+        parse_expect("()", AstNode::SExpr(vec![]))
     }
 
     #[test]
     fn test_number() {
-        parse_expect("(1)", SExprType::SExpr(vec![SExprType::Number(1)]))
+        parse_expect("(1)", AstNode::SExpr(vec![AstNode::Number(1)]))
     }
 
     #[test]
     fn test_symbol() {
-        parse_expect(
-            "(test)",
-            SExprType::SExpr(vec![SExprType::Symbol("test")]),
-        )
+        parse_expect("(test)", AstNode::SExpr(vec![AstNode::Symbol("test")]))
     }
 
     #[test]
     fn test_number_symbol() {
         parse_expect(
             "(test 1)",
-            SExprType::SExpr(vec![
-                SExprType::Symbol("test"),
-                SExprType::Number(1),
-            ]),
+            AstNode::SExpr(vec![AstNode::Symbol("test"), AstNode::Number(1)]),
         )
     }
 
@@ -107,14 +101,14 @@ mod parser_test {
     fn test_nested() {
         parse_expect(
             "(test (test 1 2) 3)",
-            SExprType::SExpr(vec![
-                SExprType::Symbol("test"),
-                SExprType::SExpr(vec![
-                    SExprType::Symbol("test"),
-                    SExprType::Number(1),
-                    SExprType::Number(2),
+            AstNode::SExpr(vec![
+                AstNode::Symbol("test"),
+                AstNode::SExpr(vec![
+                    AstNode::Symbol("test"),
+                    AstNode::Number(1),
+                    AstNode::Number(2),
                 ]),
-                SExprType::Number(3),
+                AstNode::Number(3),
             ]),
         )
     }

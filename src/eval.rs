@@ -1,24 +1,24 @@
+use crate::ast::AstNode;
 use crate::env::Env;
-use crate::sexpr::SExprType;
 use std::collections::HashMap;
 
 pub struct Eval<'a> {
-    env: Env<&'a str, SExprType<'a>>,
+    env: Env<&'a str, AstNode<'a>>,
 }
 
 impl<'a> Eval<'a> {
-    pub fn new(init_env: HashMap<&'a str, SExprType<'a>>) -> Eval {
+    pub fn new(init_env: HashMap<&'a str, AstNode<'a>>) -> Eval {
         Eval {
             env: Env::new(init_env),
         }
     }
 
-    pub fn eval(&self, ast: &'a SExprType) -> SExprType<'a> {
+    pub fn eval(&self, ast: &'a AstNode) -> AstNode<'a> {
         match ast {
-            SExprType::SExpr(l) => {
+            AstNode::SExpr(l) => {
                 if !l.is_empty() {
                     // functional application
-                    if let SExprType::Symbol(fn_name) = l[0] {
+                    if let AstNode::Symbol(fn_name) = l[0] {
                         let args = self.evlis(&l[1..]);
                         self.eval_builtin(fn_name, &args)
                     } else {
@@ -26,23 +26,23 @@ impl<'a> Eval<'a> {
                     }
                 } else {
                     // leave nil alone
-                    SExprType::SExpr(vec![])
+                    AstNode::SExpr(vec![])
                 }
             }
-            SExprType::Number(i) => SExprType::Number(*i),
-            SExprType::Symbol(s) => SExprType::Symbol(s),
+            AstNode::Number(i) => AstNode::Number(*i),
+            AstNode::Symbol(s) => AstNode::Symbol(s),
         }
     }
 
-    fn evlis(&self, list: &'a [SExprType]) -> Vec<SExprType<'a>> {
+    fn evlis(&self, list: &'a [AstNode]) -> Vec<AstNode<'a>> {
         list.iter().map(|i| self.eval(i)).collect()
     }
 
     fn eval_builtin(
         &self,
         fn_name: &'a str,
-        args: &[SExprType<'a>],
-    ) -> SExprType<'a> {
+        args: &[AstNode<'a>],
+    ) -> AstNode<'a> {
         match (fn_name, args) {
             ("+", args) => Self::builtin_addition(args),
             ("-", args) => Self::builtin_subtraction(args),
@@ -50,27 +50,27 @@ impl<'a> Eval<'a> {
         }
     }
 
-    fn builtin_addition(args: &[SExprType<'a>]) -> SExprType<'a> {
+    fn builtin_addition(args: &[AstNode<'a>]) -> AstNode<'a> {
         let sum = args.iter().map(Self::unwrap_number).sum();
-        SExprType::Number(sum)
+        AstNode::Number(sum)
     }
 
-    fn builtin_subtraction(args: &[SExprType<'a>]) -> SExprType<'a> {
+    fn builtin_subtraction(args: &[AstNode<'a>]) -> AstNode<'a> {
         match args.split_at(1) {
-            ([SExprType::Number(head)], []) => SExprType::Number(-head),
-            ([SExprType::Number(head)], tail) => {
+            ([AstNode::Number(head)], []) => AstNode::Number(-head),
+            ([AstNode::Number(head)], tail) => {
                 let result = tail
                     .iter()
                     .map(Self::unwrap_number)
                     .fold(*head, |acc, i| acc - i);
-                SExprType::Number(result)
+                AstNode::Number(result)
             }
             _ => panic!("'-' Received unexpected arguments"),
         }
     }
 
-    fn unwrap_number(item: &SExprType) -> i64 {
-        if let SExprType::Number(i) = item {
+    fn unwrap_number(item: &AstNode) -> i64 {
+        if let AstNode::Number(i) = item {
             *i
         } else {
             panic!("{:?} is not a number", item)
@@ -84,8 +84,8 @@ mod eval_test {
     use crate::lex::Parse;
     use std::collections::HashMap;
 
-    fn eval_expect(input: &'static str, expect: SExprType) {
-        let (result, _) = SExprType::parse(input).expect("parse error");
+    fn eval_expect(input: &'static str, expect: AstNode) {
+        let (result, _) = AstNode::parse(input).expect("parse error");
         let eval = Eval::new(HashMap::new());
         assert_eq!(eval.eval(&result), expect, "input: {}", input);
     }
@@ -93,12 +93,12 @@ mod eval_test {
     #[test]
     fn test_add() {
         let tests = vec![
-            ("(+ 1 1)", SExprType::Number(2)),
-            ("(+ 2 1)", SExprType::Number(3)),
-            ("(+ 0)", SExprType::Number(0)),
-            ("(+ -1 0)", SExprType::Number(-1)),
-            ("(+ 1 -0)", SExprType::Number(1)),
-            ("(+ 1 2 3 4)", SExprType::Number(10)),
+            ("(+ 1 1)", AstNode::Number(2)),
+            ("(+ 2 1)", AstNode::Number(3)),
+            ("(+ 0)", AstNode::Number(0)),
+            ("(+ -1 0)", AstNode::Number(-1)),
+            ("(+ 1 -0)", AstNode::Number(1)),
+            ("(+ 1 2 3 4)", AstNode::Number(10)),
         ];
         for (expr, result) in tests {
             eval_expect(expr, result);
@@ -108,11 +108,11 @@ mod eval_test {
     #[test]
     fn test_sub() {
         let tests = vec![
-            ("(- 1 1)", SExprType::Number(0)),
-            ("(- 2 1)", SExprType::Number(1)),
-            ("(- 1 2)", SExprType::Number(-1)),
-            ("(- 2)", SExprType::Number(-2)),
-            ("(- 1 2 3 4)", SExprType::Number(-8)),
+            ("(- 1 1)", AstNode::Number(0)),
+            ("(- 2 1)", AstNode::Number(1)),
+            ("(- 1 2)", AstNode::Number(-1)),
+            ("(- 2)", AstNode::Number(-2)),
+            ("(- 1 2 3 4)", AstNode::Number(-8)),
         ];
         for (expr, result) in tests {
             eval_expect(expr, result);
