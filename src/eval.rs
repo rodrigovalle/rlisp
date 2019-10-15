@@ -1,18 +1,6 @@
 use crate::sexpr::SExprType;
 use crate::lex::Parse;
 
-enum EvalErrorKind {
-    ExpectedSExpr,
-    ExpectedNumber,
-    TooFewArguments,
-}
-
-enum FunctionType<'a> {
-    SExpr(SExprType<'a>),
-}
-
-type EvalResult<T> = Result<T, EvalErrorKind>;
-
 pub fn eval<'a>(ast: &'a SExprType) -> SExprType<'a> {
     match ast {
         SExprType::SExpr(l) => {
