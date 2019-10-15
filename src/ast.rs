@@ -2,7 +2,7 @@ use crate::lex::{
     expect, skip_space, take_while, Parse, ParseErrorKind, ParseResult,
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum AstNode<'a> {
     SExpr(Vec<AstNode<'a>>),
     Symbol(&'a str),

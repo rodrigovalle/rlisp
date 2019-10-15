@@ -1,3 +1,5 @@
+// Maintain a stack of symbol name to value mappings.
+
 use std::collections::HashMap;
 
 pub struct Env<K, V> {
@@ -12,12 +14,14 @@ where
         Env { stack: vec![init] }
     }
 
+    pub fn empty() -> Env<K, V> {
+        Env::new(HashMap::new())
+    }
+
     pub fn get(&self, key: K) -> Option<&V> {
         for env in self.stack.iter().rev() {
             if let Some(value) = env.get(&key) {
                 return Some(value);
-            } else {
-                continue;
             }
         }
         None

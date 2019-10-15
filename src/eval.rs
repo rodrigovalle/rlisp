@@ -1,80 +1,102 @@
 use crate::ast::AstNode;
 use crate::env::Env;
-use std::collections::HashMap;
 
-pub struct Eval<'a> {
-    env: Env<&'a str, AstNode<'a>>,
+macro_rules! nil {
+    () => {
+        AstNode::SExpr(Vec::new())
+    };
 }
 
-impl<'a> Eval<'a> {
-    pub fn new(init_env: HashMap<&'a str, AstNode<'a>>) -> Eval {
+// helper function for implementing builtins:
+// takes a number out of an AstNode
+fn unwrap_number(item: &AstNode) -> i64 {
+    if let AstNode::Number(i) = item {
+        *i
+    } else {
+        panic!("{:?} is not a number", item)
+    }
+}
+
+pub struct Eval<'i, 'e> {
+    env: Env<&'i str, AstNode<'e>>,
+}
+
+impl<'i, 'e> Eval<'i, 'e> {
+    pub fn new() -> Eval<'i, 'e> {
         Eval {
-            env: Env::new(init_env),
+            env: Env::empty(),
         }
     }
 
-    pub fn eval(&self, ast: &'a AstNode) -> AstNode<'a> {
-        match ast {
-            AstNode::SExpr(l) => {
-                if !l.is_empty() {
-                    // functional application
-                    if let AstNode::Symbol(fn_name) = l[0] {
-                        let args = self.evlis(&l[1..]);
-                        self.eval_builtin(fn_name, &args)
-                    } else {
-                        panic!("no such function {:?}", l[0])
-                    }
+    pub fn eval(&mut self, node: &'i AstNode<'i>) -> AstNode<'e> {
+        match node {
+            AstNode::SExpr(node_list) => {
+                if let Some((fn_name, args)) = node_list.split_first() {
+                    // functional application of a builtin
+                    self.eval_builtin(fn_name, args)
                 } else {
-                    // leave nil alone
-                    AstNode::SExpr(vec![])
+                    // if the expression is empty then return nil
+                    nil!()
                 }
             }
-            AstNode::Number(i) => AstNode::Number(*i),
-            AstNode::Symbol(s) => AstNode::Symbol(s),
+            AstNode::Number(number) => AstNode::Number(*number),
+            AstNode::Symbol(symbol) => {
+                let value = self.env.get(symbol);
+                if let Some(v) = value {
+                    v.clone()
+                } else {
+                    panic!("no such variable in scope '{}'", symbol);
+                }
+            }
         }
     }
 
-    fn evlis(&self, list: &'a [AstNode]) -> Vec<AstNode<'a>> {
-        list.iter().map(|i| self.eval(i)).collect()
+    fn evlis(&mut self, args: &'i [AstNode]) -> Vec<AstNode<'e>> {
+        args.iter().map(|e| self.eval(e)).collect()
     }
 
     fn eval_builtin(
-        &self,
-        fn_name: &'a str,
-        args: &[AstNode<'a>],
-    ) -> AstNode<'a> {
-        match (fn_name, args) {
-            ("+", args) => Self::builtin_addition(args),
-            ("-", args) => Self::builtin_subtraction(args),
-            (op, _args) => panic!("unrecognized operator {}", op),
-        }
-    }
-
-    fn builtin_addition(args: &[AstNode<'a>]) -> AstNode<'a> {
-        let sum = args.iter().map(Self::unwrap_number).sum();
-        AstNode::Number(sum)
-    }
-
-    fn builtin_subtraction(args: &[AstNode<'a>]) -> AstNode<'a> {
-        match args.split_at(1) {
-            ([AstNode::Number(head)], []) => AstNode::Number(-head),
-            ([AstNode::Number(head)], tail) => {
-                let result = tail
-                    .iter()
-                    .map(Self::unwrap_number)
-                    .fold(*head, |acc, i| acc - i);
-                AstNode::Number(result)
+        &mut self,
+        first_node: &'i AstNode,
+        args: &'i [AstNode],
+    ) -> AstNode<'e> {
+        if let AstNode::Symbol(fn_name) = first_node {
+            match *fn_name {
+                "+" => builtin_add(&self.evlis(args)),
+                "-" => builtin_sub(&self.evlis(args)),
+                "def!" => self.builtin_def(args),
+                unknown_op => panic!("unrecognized operator {}", unknown_op),
             }
-            _ => panic!("'-' Received unexpected arguments"),
+        } else {
+            panic!("'{:?}' is not a valid function")
         }
     }
 
-    fn unwrap_number(item: &AstNode) -> i64 {
-        if let AstNode::Number(i) = item {
-            *i
+    fn builtin_def(&mut self, raw_args: &'i [AstNode]) -> AstNode<'e> {
+        if let [AstNode::Symbol(var), expr] = raw_args {
+            let val = self.eval(&expr);
+            self.env.put(var, val);
+            nil!()
         } else {
-            panic!("{:?} is not a number", item)
+            panic!("'def!' received unexpected arguments: {:?}", raw_args)
         }
+    }
+}
+
+fn builtin_add<'i, 'o>(args: &'i [AstNode]) -> AstNode<'o> {
+    let sum = args.iter().map(unwrap_number).sum();
+    AstNode::Number(sum)
+}
+
+fn builtin_sub<'i, 'o>(args: &'i [AstNode]) -> AstNode<'o> {
+    match args.split_at(1) {
+        ([AstNode::Number(head)], []) => AstNode::Number(-head),
+        ([AstNode::Number(head)], tail) => {
+            let result =
+                tail.iter().map(unwrap_number).fold(*head, |acc, i| acc - i);
+            AstNode::Number(result)
+        }
+        _ => panic!("'-' Received unexpected arguments {:?}", args),
     }
 }
 
@@ -82,11 +104,10 @@ impl<'a> Eval<'a> {
 mod eval_test {
     use super::*;
     use crate::lex::Parse;
-    use std::collections::HashMap;
 
     fn eval_expect(input: &'static str, expect: AstNode) {
         let (result, _) = AstNode::parse(input).expect("parse error");
-        let eval = Eval::new(HashMap::new());
+        let mut eval = Eval::new();
         assert_eq!(eval.eval(&result), expect, "input: {}", input);
     }
 
@@ -117,5 +138,14 @@ mod eval_test {
         for (expr, result) in tests {
             eval_expect(expr, result);
         }
+    }
+
+    #[test]
+    fn test_def() {
+        // PANIC: tries to evaluate 'a' when we call evlis
+        // When we see def! we actually don't want to evaluate like normal.
+        // Maybe there's a nice way to define an 'Eval' trait so builtins can
+        // define/override how they want to be evaluated.
+        eval_expect("(def! a (+ 1 2))", nil!())
     }
 }
