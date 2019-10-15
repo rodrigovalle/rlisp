@@ -3,17 +3,12 @@ pub enum ParseErrorKind {
     Expected(&'static str),
     SExpr,
     Integer,
-    Symbol,
 }
 
 pub type ParseResult<'a, T> = Result<(T, &'a str), ParseErrorKind>;
 
 pub trait Parse<'a>: Sized {
     fn parse(input: &'a str) -> ParseResult<Self>;
-}
-
-pub trait ParseWith<'a, C>: Sized {
-    fn parse(input: &'a str, context: C) -> ParseResult<Self>;
 }
 
 /// Skip spaces at the beginning of a string.

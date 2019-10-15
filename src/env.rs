@@ -6,8 +6,7 @@ pub struct Env<K, V> {
 
 impl<K, V> Env<K, V>
 where
-    K: std::cmp::Eq,
-    K: std::hash::Hash,
+    K: std::cmp::Eq + std::hash::Hash,
 {
     pub fn new(init: HashMap<K, V>) -> Env<K, V> {
         Env { stack: vec![init] }

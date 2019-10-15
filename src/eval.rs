@@ -1,14 +1,16 @@
-use crate::sexpr::SExprType;
 use crate::env::Env;
+use crate::sexpr::SExprType;
 use std::collections::HashMap;
 
 pub struct Eval<'a> {
-    env: Env<&'a str, SExprType<'a>>
+    env: Env<&'a str, SExprType<'a>>,
 }
 
 impl<'a> Eval<'a> {
     pub fn new(init_env: HashMap<&'a str, SExprType<'a>>) -> Eval {
-        Eval { env: Env::new(init_env) }
+        Eval {
+            env: Env::new(init_env),
+        }
     }
 
     pub fn eval(&self, ast: &'a SExprType) -> SExprType<'a> {
@@ -26,7 +28,7 @@ impl<'a> Eval<'a> {
                     // leave nil alone
                     SExprType::SExpr(vec![])
                 }
-            },
+            }
             SExprType::Number(i) => SExprType::Number(*i),
             SExprType::Symbol(s) => SExprType::Symbol(s),
         }
@@ -36,19 +38,20 @@ impl<'a> Eval<'a> {
         list.iter().map(|i| self.eval(i)).collect()
     }
 
-    fn eval_builtin(&self, fn_name: &'a str, args: &[SExprType<'a>]) -> SExprType<'a> {
+    fn eval_builtin(
+        &self,
+        fn_name: &'a str,
+        args: &[SExprType<'a>],
+    ) -> SExprType<'a> {
         match (fn_name, args) {
             ("+", args) => Self::builtin_addition(args),
             ("-", args) => Self::builtin_subtraction(args),
-            (op, args) => panic!("unrecognized operator {}", op),
+            (op, _args) => panic!("unrecognized operator {}", op),
         }
     }
 
     fn builtin_addition(args: &[SExprType<'a>]) -> SExprType<'a> {
-        let sum = args
-            .iter()
-            .map(Self::unwrap_number)
-            .sum();
+        let sum = args.iter().map(Self::unwrap_number).sum();
         SExprType::Number(sum)
     }
 
@@ -61,8 +64,8 @@ impl<'a> Eval<'a> {
                     .map(Self::unwrap_number)
                     .fold(*head, |acc, i| acc - i);
                 SExprType::Number(result)
-            },
-            _ => panic!("'-' Received unexpected arguments")
+            }
+            _ => panic!("'-' Received unexpected arguments"),
         }
     }
 
@@ -102,6 +105,7 @@ mod eval_test {
         }
     }
 
+    #[test]
     fn test_sub() {
         let tests = vec![
             ("(- 1 1)", SExprType::Number(0)),

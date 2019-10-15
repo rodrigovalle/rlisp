@@ -2,9 +2,9 @@ mod env;
 mod eval;
 mod lex;
 mod sexpr;
+use eval::Eval;
 use lex::Parse;
 use sexpr::SExprType;
-use eval::Eval;
 use std::collections::HashMap;
 
 fn main() {
