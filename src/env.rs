@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-struct Env<K, V> {
+pub struct Env<K, V> {
     stack: Vec<HashMap<K, V>>,
 }
 

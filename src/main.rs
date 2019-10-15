@@ -4,7 +4,8 @@ mod lex;
 mod sexpr;
 use lex::Parse;
 use sexpr::SExprType;
-use eval::eval;
+use eval::Eval;
+use std::collections::HashMap;
 
 fn main() {
     run("(+ 1 (+ 2 3))");
@@ -13,10 +14,11 @@ fn main() {
 }
 
 fn run(program: &str) {
+    let evaluator = Eval::new(HashMap::new());
     match SExprType::parse(program) {
         Ok((sexpr, _)) => {
             println!("parsed: {:?}", sexpr);
-            println!("eval: {:?}", eval(&sexpr));
+            println!("eval: {:?}", evaluator.eval(&sexpr));
         }
         Err(err) => {
             println!("failure");
